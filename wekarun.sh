@@ -1,10 +1,14 @@
 #!/bin/bash
 WEKALOC="$HOME/Applications/weka-3-7-9/weka.jar"
 WEKA="java -Xmx1024m -classpath $WEKALOC"
+TRAINING_SETS=("data/heart_disease.arff" "data/abalone.csv")
 
 cluster () {
     echo "Clustering..."
-    $WEKA 
+    for TRAINER in ${TRAINING_SETS[*]}; do
+        echo $TRAINER
+        $WEKA weka.clusterers.SimpleKMeans -N 4 -A "weka.core.ManhattanDistance -R first-last" -I 500 -num-slots 2 -S 10 -t $TRAINER 2>&1 > /dev/null
+    done
 }
 
 reduce () {
@@ -24,7 +28,8 @@ nn_clustered () {
 }
 
 usage () {
-    echo "usage: $0 [cluster|reduce|cluster_reduced|nnet_reduced|nnet_cluster|all]\n"
+    echo "usage: $0 [cluster|reduce|cluster_reduced|nnet_reduced|nnet_cluster|all]"
+    echo
     exit 1
 }
 
