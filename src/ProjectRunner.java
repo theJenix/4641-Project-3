@@ -1,7 +1,13 @@
-import java.io.IOException;
-import java.util.ArrayList;
+/*import java.io.IOException;
+import java.util.ArrayList;*/
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 
+/*import dist.AbstractConditionalDistribution;
+
+import func.FunctionApproximater;
 import func.KMeansClusterer;
+import func.NeuralNetworkClassifier;
 import shared.DataSet;
 import shared.DataSetWriter;
 import shared.filt.IndependentComponentAnalysis;
@@ -10,7 +16,7 @@ import shared.filt.LabelSplitFilter;
 import shared.filt.PrincipalComponentAnalysis;
 import shared.filt.RandomizedProjectionFilter;
 import shared.filt.ReversibleFilter;
-import shared.reader.ArffDataSetReader;
+import shared.reader.ArffDataSetReader;*/
 import shared.reader.CSVDataSetReader;
 
 public class ProjectRunner {
@@ -19,85 +25,77 @@ public class ProjectRunner {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		DataSet abalone = null;
-		DataSet hd = null;
-		try {
-			abalone = (new CSVDataSetReader("data/abalone.csv")).read();
-			hd = (new ArffDataSetReader("data/heart_disease.arff")).read();
-		} catch (Exception e) {
-			e.printStackTrace();
+		String reducedDir = "data/reduced/";
+		String clustReducedDir = "data/clustered-reduced/";
+		String[] reduced = {"_pca.csv", "_ica.csv", "_insig.csv", "_rp.csv"};
+		String[] clustered = {"_kmeans", "_emax"};
+		String[] setNames = {"abalone", "hd"};
+		int iterations = 4000;
+		
+		// numbers for the ThreadPoolExecutor
+		int minThreads = 2;
+		int maxThreads = 10;
+		long keepAlive = 10;
+		
+		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
+		
+		for (String setName : setNames) {
+			for (String reducer : reduced) {
+				try {
+					// pull in the reduced data set
+					q.add(new NeuralNetTrainer(
+							iterations, 
+							(new CSVDataSetReader(reducedDir+setName+reducer)).read(), 
+							reducer, 
+							setName));
+					// pull in the reduced->clustered data sets
+					for (String clusterer : clustered) {
+						q.add(new NeuralNetTrainer(
+								iterations, 
+								(new CSVDataSetReader(clustReducedDir+setName+clusterer+reducer)).read(), 
+								clusterer+reducer, 
+								setName));
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
 		}
-		(new LabelSplitFilter()).filter(abalone);
-		(new LabelSplitFilter()).filter(hd);
+		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, null, q);
 		
-		// CLUSTER DATA
-		// Clustering was done in Weka, so load the data sets here 
-		DataSet a_ck = null;   // abalone_clustered_kmeans
-		DataSet a_cem = null;  // abalone_clustered_expectation_maximization
 		
-		DataSet hd_ck = null;  // heartdisease_clustered_kmeans
-		DataSet hd_cem = null; // heartdisease_clustered_expectation_maximization
-        try {
-			a_ck = (new ArffDataSetReader("data/clustered/abalone_kmeans.arff")).read();
-			a_cem = (new ArffDataSetReader("data/clustered/abalone_emax.arff")).read();
-			hd_ck = (new ArffDataSetReader("data/clustered/hd_kmeans.arff")).read();
-			hd_cem = (new ArffDataSetReader("data/clustered/hd_emax.arff")).read();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}   
-        
-        //Filter Data
-
-		// REDUCE DATA
-		/*Thread abaThread = new Thread(new DataSetWorker(abalone, "abalone"));
-		Thread hdThread = new Thread(new DataSetWorker(hd, "hd"));
-		abaThread.start();
-		hdThread.start();
-		try {
-			abaThread.wait();
-			hdThread.wait();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}*/
-        DataSetWorker adw = new DataSetWorker(abalone, "abalone");
-        adw.run();
-        DataSetWorker hdw = new DataSetWorker(hd, "hd");
-        hdw.run();
 	}
 	
-	private static class DataSetWorker implements Runnable {
+	/**
+	 * Not in use any more, but kept around for the filtering code as a reference
+	 * @author chronon
+	 *
+	 */
+	/*private static class DataSetWorker {
 		// static variables
 		private static final String reducedDir = "data/reduced/";
 		private static final String clustReducedDir = "data/creduced/";
+		private static final String[] reduced = {"_pca.csv", "_ica.csv", "_insig.csv", "_rp.csv"};
+		private static final String[] clustered = {"_kmeans", "_emax"};
 		
 		// the array of DataSets corresponding to the mountain of nnets we need to train
 		private DataSet clean;
-		ArrayList<Tuple<ReversibleFilter,String>> filters;
+
 		private String setName;
 		private final int toKeep = 5;
 		
 		
-		public DataSetWorker(DataSet d, String setName) {
+		public DataSetWorker(String setName) {
 			this.setName = setName;
-			this.clean = d;
-			filters = new ArrayList<Tuple<ReversibleFilter,String>>();
-		    init();
 		}
 		
 		public void reduce() {
-			
-		}
-		
-	    public void init() {
+	    	// Add all the filters we need
+			ArrayList<Tuple<ReversibleFilter,String>> filters = new ArrayList<Tuple<ReversibleFilter,String>>();
 	        filters.add(new Tuple<ReversibleFilter, String>(new PrincipalComponentAnalysis(clean), "_pca.csv"));
 	        filters.add(new Tuple<ReversibleFilter, String>(new IndependentComponentAnalysis(clean), "_ica.csv"));
 	        filters.add(new Tuple<ReversibleFilter, String>(new RandomizedProjectionFilter(toKeep, clean.get(0).size()), "_insig.csv"));
 	        filters.add(new Tuple<ReversibleFilter, String>(new InsignificantComponentAnalysis(clean), "_rp.csv"));
-	    }
-
-		public void filter() {
-			init();
 			for (Tuple<ReversibleFilter, String> tup : filters) {
 				ReversibleFilter filter = tup.fst();
 				String ext = tup.snd();
@@ -112,11 +110,7 @@ public class ProjectRunner {
 				filter.reverse(clean);
 			}
 		}
-		
-		@Override
-		public void run() {
-			filter();
-		}
+
 		
 	}
 	
@@ -135,6 +129,5 @@ public class ProjectRunner {
 		  public Y snd() {
 			  return this.snd;
 		  }
-		} 
-
+		} */
 }
