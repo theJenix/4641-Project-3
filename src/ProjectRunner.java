@@ -2,6 +2,7 @@
 import java.util.ArrayList;*/
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /*import dist.AbstractConditionalDistribution;
 
@@ -17,19 +18,22 @@ import shared.filt.PrincipalComponentAnalysis;
 import shared.filt.RandomizedProjectionFilter;
 import shared.filt.ReversibleFilter;
 import shared.reader.ArffDataSetReader;*/
+import shared.reader.ArffDataSetReader;
+//import shared.reader.CSVDataSetReader;
 import shared.reader.CSVDataSetReader;
 
 public class ProjectRunner {
 	private String baseDir = "data/";
 	/**
 	 * @param args
+	 * @throws InterruptedException 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		String reducedDir = "data/reduced/";
 		String clustReducedDir = "data/clustered-reduced/";
-		String[] reduced = {"_pca.csv", "_ica.csv", "_insig.csv", "_rp.csv"};
+		String[] reduced = {"_pca", "_ica", "_insig", "_rp"};
 		String[] clustered = {"_kmeans", "_emax"};
-		String[] setNames = {"abalone", "hd"};
+		String[] setNames = {"hd"};
 		int iterations = 4000;
 		
 		// numbers for the ThreadPoolExecutor
@@ -38,21 +42,22 @@ public class ProjectRunner {
 		long keepAlive = 10;
 		
 		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
-		
+		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, TimeUnit.SECONDS, q);
+
 		for (String setName : setNames) {
 			for (String reducer : reduced) {
 				try {
 					// pull in the reduced data set
 					q.add(new NeuralNetTrainer(
 							iterations, 
-							(new CSVDataSetReader(reducedDir+setName+reducer)).read(), 
+							(new CSVDataSetReader(reducedDir+setName+reducer+".csv")).read(), 
 							reducer, 
 							setName));
 					// pull in the reduced->clustered data sets
 					for (String clusterer : clustered) {
 						q.add(new NeuralNetTrainer(
 								iterations, 
-								(new CSVDataSetReader(clustReducedDir+setName+clusterer+reducer)).read(), 
+								(new ArffDataSetReader(clustReducedDir+setName+clusterer+reducer+".arff")).read(), 
 								clusterer+reducer, 
 								setName));
 					}
@@ -61,8 +66,9 @@ public class ProjectRunner {
 				}
 			}
 		}
-		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, null, q);
-		
+		while (!tpe.awaitTermination(60, TimeUnit.SECONDS)) {
+			  System.out.println(".");
+			}
 		
 	}
 	
