@@ -34,41 +34,54 @@ public class ProjectRunner {
 		String[] reduced = {"_pca", "_ica", "_insig", "_rp"};
 		String[] clustered = {"_kmeans", "_emax"};
 		String[] setNames = {"hd"};
-		int iterations = 4000;
+		int iterations = 10; //4000;
 		
 		// numbers for the ThreadPoolExecutor
-		int minThreads = 2;
-		int maxThreads = 10;
+		int minThreads = 1;
+		int maxThreads = 1;
 		long keepAlive = 10;
 		
 		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
 		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, TimeUnit.SECONDS, q);
-
+		int numTasks = 0;
+		
 		for (String setName : setNames) {
 			for (String reducer : reduced) {
 				try {
 					// pull in the reduced data set
-					q.add(new NeuralNetTrainer(
+					tpe.submit(new NeuralNetTrainer(
 							iterations, 
 							(new CSVDataSetReader(reducedDir+setName+reducer+".csv")).read(), 
 							reducer, 
 							setName));
+					numTasks++;
 					// pull in the reduced->clustered data sets
 					for (String clusterer : clustered) {
-						q.add(new NeuralNetTrainer(
+						tpe.submit(new NeuralNetTrainer(
 								iterations, 
 								(new ArffDataSetReader(clustReducedDir+setName+clusterer+reducer+".arff")).read(), 
 								clusterer+reducer, 
 								setName));
+						numTasks++;
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 		}
+		int i = 0;
+		while (tpe.getCompletedTaskCount() < numTasks) {
+			//System.out.println("Fuck java");
+			i++;
+		}
+		tpe.shutdown();
 		while (!tpe.awaitTermination(60, TimeUnit.SECONDS)) {
 			  System.out.println(".");
-			}
+		}
+		System.out.println("Done\n========");
+
+		System.out.println(i);
+
 		
 	}
 	

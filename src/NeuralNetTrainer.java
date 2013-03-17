@@ -1,13 +1,6 @@
-import dist.*;
-import opt.*;
-import opt.example.*;
-import opt.ga.*;
 import shared.*;
-import shared.filt.LabelSplitFilter;
-import shared.reader.CSVDataSetReader;
 import func.nn.backprop.*;
 
-import java.util.*;
 import java.io.*;
 import java.text.*;
 
@@ -43,6 +36,14 @@ public class NeuralNetTrainer implements Runnable {
     }
     
     public void run() {		
+    	System.out.println("Running");
+        BufferedWriter bw = null;
+		try {
+			bw = new BufferedWriter(new FileWriter(new File(dataDir + "nn_results_" + setName+extension+".txt")));
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
     	double correct = 0, incorrect = 0;
 
         BackPropagationNetwork network = factory.createClassificationNetwork(
@@ -51,9 +52,9 @@ public class NeuralNetTrainer implements Runnable {
         ConvergenceTrainer trainer = new ConvergenceTrainer(
                new BatchBackPropagationTrainer(set, network,
             		   measure, updateRule));
-        
         float start = System.nanoTime();
-        trainer.train();
+        double err = trainer.train(); //problem here
+
         double trainingTime = (System.nanoTime() - start)/Math.pow(10,9);
         start = System.nanoTime();
         for(int j = 0; j < instances.length; j++) {
@@ -65,20 +66,18 @@ public class NeuralNetTrainer implements Runnable {
 
         }
         double testingTime = (System.nanoTime() - start)/Math.pow(10,9);
-        BufferedWriter bw = null;
         try {
-			bw = new BufferedWriter(new FileWriter(new File(dataDir + "nn_results_" + setName+extension+".txt")));
 			bw.write("Correctly classified " + correct + " instances." +
 		            "\nIncorrectly classified " + incorrect + " instances.\nPercent correctly classified: "
 		            + df.format(correct/(correct+incorrect)*100) + "%\nTraining time: " + df.format(trainingTime)
 		            + " seconds\nTesting time: " + df.format(testingTime) + " seconds\n");
-			bw.newLine();
 			bw.flush();
 			bw.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}           
+		}      
+        System.out.println("Trainer Completed");
     }
 
 }
