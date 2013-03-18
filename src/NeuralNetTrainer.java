@@ -52,10 +52,10 @@ public class NeuralNetTrainer implements Runnable {
         FixedIterationTrainer trainer = new FixedIterationTrainer(
                new BatchBackPropagationTrainer(set, network,
             		   measure, updateRule), trainingIterations);
-        float start = System.nanoTime();
+        long start = System.nanoTime();
         double err = trainer.train(); //problem here
-
-        double trainingTime = (System.nanoTime() - start)/Math.pow(10,9);
+        long end = System.nanoTime();
+        double trainingTime = (end - start)/Math.pow(10,9);
         start = System.nanoTime();
         for(int j = 0; j < instances.length; j++) {
         	double predicted, actual;
@@ -65,7 +65,8 @@ public class NeuralNetTrainer implements Runnable {
             double trash = Math.abs(predicted - actual) < 0.5 ? correct++ : incorrect++;
 
         }
-        double testingTime = (System.nanoTime() - start)/Math.pow(10,9);
+        end = System.nanoTime();
+        double testingTime = (end - start)/Math.pow(10,9);
         try {
 			bw.write("Correctly classified " + correct + " instances." +
 		            "\nIncorrectly classified " + incorrect + " instances.\nPercent correctly classified: "
@@ -74,7 +75,6 @@ public class NeuralNetTrainer implements Runnable {
 			bw.flush();
 			bw.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}      
         System.out.println("Trainer Completed");

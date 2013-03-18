@@ -40,7 +40,7 @@ public class ProjectRunner {
 		
 		// numbers for the ThreadPoolExecutor
 		int minThreads = 1;
-		int maxThreads = 1;
+		int maxThreads = 4;
 		long keepAlive = 10;
 		
 		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
