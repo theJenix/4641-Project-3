@@ -18,6 +18,8 @@ import shared.filt.PrincipalComponentAnalysis;
 import shared.filt.RandomizedProjectionFilter;
 import shared.filt.ReversibleFilter;
 import shared.reader.ArffDataSetReader;*/
+import shared.DataSet;
+import shared.filt.LabelSplitFilter;
 import shared.reader.ArffDataSetReader;
 //import shared.reader.CSVDataSetReader;
 import shared.reader.CSVDataSetReader;
@@ -34,7 +36,7 @@ public class ProjectRunner {
 		String[] reduced = {"_pca", "_ica", "_insig", "_rp"};
 		String[] clustered = {"_kmeans", "_emax"};
 		String[] setNames = {"hd"};
-		int iterations = 10; //4000;
+		int iterations = 4000;
 		
 		// numbers for the ThreadPoolExecutor
 		int minThreads = 1;
@@ -44,22 +46,26 @@ public class ProjectRunner {
 		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
 		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, TimeUnit.SECONDS, q);
 		int numTasks = 0;
-		
+		LabelSplitFilter lsl = new LabelSplitFilter();
 		for (String setName : setNames) {
 			for (String reducer : reduced) {
 				try {
 					// pull in the reduced data set
+					DataSet d = (new CSVDataSetReader(reducedDir+setName+reducer+".csv")).read();
+					lsl.filter(d);
 					tpe.submit(new NeuralNetTrainer(
 							iterations, 
-							(new CSVDataSetReader(reducedDir+setName+reducer+".csv")).read(), 
+							d, 
 							reducer, 
 							setName));
 					numTasks++;
 					// pull in the reduced->clustered data sets
 					for (String clusterer : clustered) {
+						DataSet a = (new ArffDataSetReader(clustReducedDir+setName+clusterer+reducer+".arff")).read();
+						lsl.filter(a);
 						tpe.submit(new NeuralNetTrainer(
 								iterations, 
-								(new ArffDataSetReader(clustReducedDir+setName+clusterer+reducer+".arff")).read(), 
+								a,
 								clusterer+reducer, 
 								setName));
 						numTasks++;
