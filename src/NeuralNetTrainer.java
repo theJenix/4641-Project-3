@@ -49,9 +49,9 @@ public class NeuralNetTrainer implements Runnable {
         BackPropagationNetwork network = factory.createClassificationNetwork(
            new int[] { inputLayer, hiddenLayer, outputLayer });
 
-        ConvergenceTrainer trainer = new ConvergenceTrainer(
+        FixedIterationTrainer trainer = new FixedIterationTrainer(
                new BatchBackPropagationTrainer(set, network,
-            		   measure, updateRule));
+            		   measure, updateRule), trainingIterations);
         float start = System.nanoTime();
         double err = trainer.train(); //problem here
 
