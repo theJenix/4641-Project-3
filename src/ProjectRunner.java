@@ -34,7 +34,7 @@ public class ProjectRunner {
 		String clustReducedDir = "data/clustered-reduced/";
 		String[] reduced = {"_pca", "_ica", "_insig", "_rp"};
 		String[] clustered = {"_kmeans", "_emax"};
-		String[] setNames = {"hd"};
+		String[] setNames = {"abalone", "hd"};
 		int iterations = 8000;
 		
 		// numbers for the ThreadPoolExecutor
