@@ -19,13 +19,12 @@ import shared.filt.RandomizedProjectionFilter;
 import shared.filt.ReversibleFilter;
 import shared.reader.ArffDataSetReader;*/
 import shared.DataSet;
-import shared.filt.LabelSplitFilter;
+import shared.filt.LabelSelectFilter;
 import shared.reader.ArffDataSetReader;
 //import shared.reader.CSVDataSetReader;
 import shared.reader.CSVDataSetReader;
 
 public class ProjectRunner {
-	private String baseDir = "data/";
 	/**
 	 * @param args
 	 * @throws InterruptedException 
@@ -36,7 +35,7 @@ public class ProjectRunner {
 		String[] reduced = {"_pca", "_ica", "_insig", "_rp"};
 		String[] clustered = {"_kmeans", "_emax"};
 		String[] setNames = {"hd"};
-		int iterations = 4000;
+		int iterations = 8000;
 		
 		// numbers for the ThreadPoolExecutor
 		int minThreads = 1;
@@ -46,12 +45,14 @@ public class ProjectRunner {
 		LinkedBlockingQueue<Runnable> q = new LinkedBlockingQueue<Runnable>();
 		ThreadPoolExecutor tpe = new ThreadPoolExecutor(minThreads, maxThreads, keepAlive, TimeUnit.SECONDS, q);
 		int numTasks = 0;
-		LabelSplitFilter lsl = new LabelSplitFilter();
 		for (String setName : setNames) {
 			for (String reducer : reduced) {
 				try {
 					// pull in the reduced data set
 					DataSet d = (new CSVDataSetReader(reducedDir+setName+reducer+".csv")).read();
+					//WEKA's clustering adds the cluster num as the final attribute
+					// so the second to last attribute is now the label
+					LabelSelectFilter lsl = new LabelSelectFilter(d.get(0).size()-2);
 					lsl.filter(d);
 					tpe.submit(new NeuralNetTrainer(
 							iterations, 

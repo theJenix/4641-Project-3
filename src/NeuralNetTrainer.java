@@ -7,7 +7,7 @@ import java.text.*;
 public class NeuralNetTrainer implements Runnable {
     private Instance[] instances;
 
-    private final int inputLayer = 13, hiddenLayer = 5, outputLayer = 1;
+    private int inputLayer = 13, hiddenLayer = 5, outputLayer = 1;
     private final BackPropagationNetworkFactory factory = new BackPropagationNetworkFactory();
     private int trainingIterations = 6000;
     private final GradientErrorMeasure measure = new SumOfSquaresError();
@@ -33,6 +33,7 @@ public class NeuralNetTrainer implements Runnable {
     	this.set = set;
     	this.extension = extension;
     	this.setName = name;
+    	this.inputLayer = this.set.get(0).size();
     }
     
     public void run() {		
@@ -49,9 +50,9 @@ public class NeuralNetTrainer implements Runnable {
         BackPropagationNetwork network = factory.createClassificationNetwork(
            new int[] { inputLayer, hiddenLayer, outputLayer });
 
-        FixedIterationTrainer trainer = new FixedIterationTrainer(
+        ConvergenceTrainer trainer = new ConvergenceTrainer(
                new BatchBackPropagationTrainer(set, network,
-            		   measure, updateRule), trainingIterations);
+            		   measure, updateRule), 1E-10, trainingIterations);
         long start = System.nanoTime();
         double err = trainer.train(); //problem here
         long end = System.nanoTime();
